@@ -1,0 +1,114 @@
+# Zo Hosting Deployment Configuration
+# Similar to x-link-fetcher deployment pattern
+
+name: telnyx-mcp-server
+version: 1.0.0
+
+# Build configuration
+build:
+  type: nodejs
+  node_version: "20"
+  build_command: "npm ci && npm run build"
+  output_directory: "build"
+
+# Runtime configuration
+runtime:
+  start_command: "node build/index.js"
+  health_check:
+    path: "/health"
+    interval: 30
+    timeout: 5
+    healthy_threshold: 2
+    unhealthy_threshold: 3
+
+# Environment variables (set in Zo dashboard or CLI)
+environment:
+  NODE_ENV: production
+  PORT: 3000
+  # Sensitive values should be set via Zo secrets:
+  # zo secret set TELNYX_API_KEY <value>
+  # zo secret set TELNYX_PROFILE_ID <value>
+  # zo secret set WEBHOOK_SECRET <value>
+
+# Resource allocation
+resources:
+  memory: 512Mi
+  cpu: "0.5"
+  instances:
+    min: 1
+    max: 3
+  autoscaling:
+    target_cpu_percent: 70
+    target_memory_percent: 80
+
+# Networking
+network:
+  public: true
+  domains:
+    - pattern: "telnyx-mcp"
+  ports:
+    - 3000
+
+# Webhooks configuration
+webhooks:
+  - path: "/webhooks/telnyx"
+    method: POST
+    public: true
+    description: "TELNYX webhook endpoint for incoming SMS and call events"
+
+# Monitoring and logging
+logging:
+  level: info
+  format: json
+  retention_days: 7
+
+monitoring:
+  enabled: true
+  alerts:
+    - type: error_rate
+      threshold: 5
+      window: 5m
+    - type: response_time
+      threshold: 2000
+      window: 5m
+
+# Deployment strategy
+deployment:
+  strategy: rolling
+  max_surge: 1
+  max_unavailable: 0
+  health_check_grace_period: 30
+
+# Secrets (reference to Zo secrets manager)
+secrets:
+  - TELNYX_API_KEY
+  - TELNYX_PUBLIC_KEY
+  - TELNYX_PROFILE_ID
+  - WEBHOOK_SECRET
+
+# Custom domains (optional)
+# domains:
+#   - telnyx-mcp.yourdomain.com
+
+# Backup and persistence
+persistence:
+  enabled: false
+  # No persistent storage needed for this stateless service
+
+# CI/CD Integration
+ci_cd:
+  auto_deploy_branch: main
+  deploy_on_tag: true
+  tag_pattern: "v*"
+
+# Additional metadata
+metadata:
+  description: "MCP Server for TELNYX SMS and Voice integration"
+  repository: "https://github.com/tomaitagaki/telnyx-mcp-server"
+  maintainer: "Toma Itagaki"
+  tags:
+    - mcp
+    - telnyx
+    - sms
+    - voice
+    - webhooks
